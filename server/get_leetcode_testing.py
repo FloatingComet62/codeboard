@@ -1,77 +1,78 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-import requests, json
+import requests
 
-def send_query(query):
-    url = "https://leetcode.com/graphql"
-
-    headers = {
-        "Content-Type": "application/json",
+# Define your queries as constants at the top of your file
+MATCHED_USER_QUERY =  '''
+    query userPublicProfile($username: String!) {
+      matchedUser(username: $username) {
+        profile {
+          ranking
+          userAvatar
+          realName
+        }
+      }
     }
-    response = requests.post(url, json={"query": query}, headers=headers)
+'''
+
+QUESTIONS_SUBMITTED_QUERY = '''
+    query recentAcSubmissions($username: String!, $limit: Int!) {
+      recentAcSubmissionList(username: $username, limit: $limit) {
+        id
+      }
+    }
+'''
+
+LANGUAGE_PROBLEM_COUNT_QUERY = '''
+    query languageStats($username: String!) {
+      matchedUser(username: $username) {
+        languageProblemCount {
+          languageName
+          problemsSolved
+        }
+      }
+    }
+'''
+
+# Modify your send_query function to accept variables
+def send_query(query, variables):
+    url = "https://leetcode.com/graphql"
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
     data = response.json()
     return data
 
-def get_user_data():
-    username = "hushraj"
+# Use the modified send_query function in your signal
+def get_user_data(username):
     limit = 500
-    query = f"""
-    {{
-      matchedUser(username:"{username}") {{
-        profile {{
-            ranking
-            realName
-            userAvatar
-            solutionCount
-        }}
-      }}
-    }}
-    """
-    query2 = f"""
-    {{
-        recentAcSubmission(username:"{username}", limit:"{limit}") {{
-            id
-            title
-            titleSlug
-            timestamp
-        }}
-    }}
-    """
-    query3 = f"""
-    {{
-      matchedUser(username:"{username}") {{
-        languageProblemCount {{
-            problemsSolved
-        }}
-      }}
-    }}
-    """
-    response = send_query(query)
-    response3 = send_query(query3)
+
+    response = send_query(MATCHED_USER_QUERY, {"username": username})
+    response2 = send_query(QUESTIONS_SUBMITTED_QUERY, {"username": username, "limit": limit})
+    response3 = send_query(LANGUAGE_PROBLEM_COUNT_QUERY, {"username": username})
 
     data = response
+    data2 = response2
     data3 = response3
+    print(response2)
 
-    print(data)
-    print(data3)
+    data2 = data2['data']['recentAcSubmissionList']
+
+    questions_solved = []
+    for question in data2:
+        questions_solved.append(question['id'])
 
     profile = data['data']['matchedUser']['profile']
     realname = profile['realName']
     rank = profile['ranking']
     photo_url = profile['userAvatar']
-    questions_arr = data3['data']['matchedUser']['languageProblemCount']
-    number_of_questions = 0
-    for question in questions_arr:
-        number_of_questions += question['problemsSolved']
     last_solved = "Not available"
-    
-    print(f"Real name: {realname}")
-    print(f"Rank: {rank}")
-    print(f"Photo URL: {photo_url}")
-    print(f"Number of questions: {number_of_questions}")
-    print(f"Last solved: {last_solved}")
+    number_of_questions = 0
+    data3 = data3['data']['matchedUser']['languageProblemCount']
+    for question in data3:
+        number_of_questions += question['problemsSolved']
 
+    print(questions_solved)
+    
     print(f"Data for {username} saved successfully")
 
-
-get_user_data()
+get_user_data("singlaishan69")

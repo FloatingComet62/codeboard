@@ -1,0 +1,10 @@
+Django
+python-dotenv
+psycopg2-binary
+djangorestframework
+requests
+django-cors-headers
+djangorestframework-simplejwt
+gunicorn
+google-auth
+whitenoise
